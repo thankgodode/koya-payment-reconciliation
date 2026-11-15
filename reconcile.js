@@ -9,11 +9,39 @@ let total = 0;
 let count = 0;
 
 const lines = fs.readFileSync("payments.jsonl", "utf8").split("\n").filter((l) => l.length > 0);
+const clean_trx = {}
 for (const line of lines) {
-  const event = JSON.parse(line);
-  if (event.status === "success") {
-    total += Number(event.amount);
-    count += 1;
+  try {
+    const event = JSON.parse(line);
+
+    if(event.txn_id && event.status && event.ts && event.currency){
+      if (clean_trx[event.txn_id]){
+        let d1 = new Date(clean_trx[event.txn_id].ts)
+        let d2 = new Date(event.ts);
+        
+        if (d1>d2){
+          continue
+        }else{
+          clean_trx[event.txn_id] = event;
+        }
+      }else{
+        clean_trx[event.txn_id] = event
+      }
+    }
+
+  } catch (error) {
+    continue
+  }
+
+}
+
+
+for (const txn in clean_trx){
+  let event = clean_trx[txn]
+  if(event.status === "success"){
+    total += typeof event.amount === "string" ?
+      Number(event.amount.replace(",","")) : Number(event.amount)
+    count+=1;
   }
 }
 
